@@ -83,8 +83,8 @@ describe('RemoteDevStack', () => {
   });
 
   describe('Security group', () => {
-    test('allows SSH (port 22) from the default CIDR 0.0.0.0/0', () => {
-      const template = makeTemplate();
+    test('allows SSH (port 22) from 0.0.0.0/0 when a keyName is provided', () => {
+      const template = makeTemplate({ keyName: 'my-key' });
       template.hasResourceProperties('AWS::EC2::SecurityGroup', {
         SecurityGroupIngress: Match.arrayWith([
           Match.objectLike({
@@ -95,6 +95,17 @@ describe('RemoteDevStack', () => {
           }),
         ]),
       });
+    });
+
+    test('does not open port 22 when neither keyName nor allowedSshCidr is set', () => {
+      const template = makeTemplate();
+      const sg = template.findResources('AWS::EC2::SecurityGroup');
+      const ingress = (Object.values(sg)[0] as any).Properties
+        ?.SecurityGroupIngress;
+      // No SSH ingress rules should be present at all
+      expect(
+        (ingress ?? []).some((r: any) => r.FromPort === 22),
+      ).toBe(false);
     });
 
     test('honours the allowedSshCidr context override', () => {

@@ -22,7 +22,7 @@ Compatible with:
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org/) ≥ 18 and npm
+- [Node.js](https://nodejs.org/) ≥ 20 and npm
 - [AWS CDK v2](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html): `npm install -g aws-cdk`
 - AWS CLI configured with credentials that have EC2/VPC/IAM permissions
 - An EC2 Key Pair in the target region (for SSH access — optional if you use Session Manager)
@@ -59,7 +59,7 @@ After deployment the CLI prints the stack outputs:
 Outputs:
 RemoteDevStack.ElasticIp             = 1.2.3.4
 RemoteDevStack.InstanceId            = i-0abcdef1234567890
-RemoteDevStack.SshCommand            = ssh -i my-key-pair.pem ubuntu@1.2.3.4
+RemoteDevStack.SshCommand            = ssh -i <path-to-private-key.pem> ubuntu@1.2.3.4
 RemoteDevStack.VsCodeRemoteSshTarget = ubuntu@1.2.3.4
 RemoteDevStack.JetBrainsGatewayTarget= ubuntu@1.2.3.4
 ```
@@ -85,9 +85,10 @@ RemoteDevStack.JetBrainsGatewayTarget= ubuntu@1.2.3.4
 SSH into the instance once and run:
 
 ```bash
-curl -Lk 'https://code.visualstudio.com/sha/download?build=stable&os=cli-alpine-x64' --output /tmp/vscode_cli.tar.gz
-tar -xf /tmp/vscode_cli.tar.gz -C /usr/local/bin
-code tunnel --accept-server-license-terms
+mkdir -p ~/.local/bin
+curl -L 'https://code.visualstudio.com/sha/download?build=stable&os=cli-alpine-x64' --output /tmp/vscode_cli.tar.gz
+tar -xzf /tmp/vscode_cli.tar.gz -C ~/.local/bin
+~/.local/bin/code tunnel --accept-server-license-terms
 ```
 
 Then follow the GitHub sign-in link that appears.

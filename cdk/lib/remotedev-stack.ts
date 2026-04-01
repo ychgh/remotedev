@@ -24,9 +24,10 @@ export class RemoteDevStack extends cdk.Stack {
 
     // ── Context parameters ────────────────────────────────────────────────────
     const keyName = this.node.tryGetContext('keyName') as string | undefined;
-    const allowedSshCidr =
-      (this.node.tryGetContext('allowedSshCidr') as string | undefined) ??
-      '0.0.0.0/0';
+    const allowedSshCidrCtx = this.node.tryGetContext('allowedSshCidr') as
+      | string
+      | undefined;
+    const allowedSshCidr = allowedSshCidrCtx ?? '0.0.0.0/0';
     const instanceTypeStr =
       (this.node.tryGetContext('instanceType') as string | undefined) ??
       'm5.2xlarge'; // 8 vCPUs, 32 GiB RAM — minimum requirement
@@ -52,11 +53,16 @@ export class RemoteDevStack extends cdk.Stack {
       allowAllOutbound: true,
     });
 
-    securityGroup.addIngressRule(
-      ec2.Peer.ipv4(allowedSshCidr),
-      ec2.Port.tcp(22),
-      'SSH access',
-    );
+    // Only open port 22 when a key pair is configured or when an explicit
+    // allowedSshCidr is provided. When neither is set, rely solely on
+    // Session Manager (no inbound port needed).
+    if (keyName || allowedSshCidrCtx) {
+      securityGroup.addIngressRule(
+        ec2.Peer.ipv4(allowedSshCidr),
+        ec2.Port.tcp(22),
+        'SSH access',
+      );
+    }
 
     // ── IAM role ──────────────────────────────────────────────────────────────
     // AmazonSSMManagedInstanceCore lets you use Session Manager as an
@@ -102,13 +108,6 @@ export class RemoteDevStack extends cdk.Stack {
       '',
       '# nvm + Node.js (LTS) for the ubuntu user',
       'sudo -u ubuntu bash -c \'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash && source ~/.nvm/nvm.sh && nvm install --lts\'',
-      '',
-      '# Signal successful completion',
-      '/opt/aws/bin/cfn-signal -e $? --stack ' +
-        cdk.Stack.of(this).stackName +
-        ' --region ' +
-        cdk.Stack.of(this).region +
-        ' --resource RemoteDevInstance || true',
     );
 
     // ── EC2 instance ──────────────────────────────────────────────────────────
@@ -163,7 +162,7 @@ export class RemoteDevStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, 'SshCommand', {
       value: keyName
-        ? `ssh -i ${keyName}.pem ubuntu@${eip.ref}`
+        ? `ssh -i <path-to-private-key.pem> ubuntu@${eip.ref}`
         : `# No key pair specified – use Session Manager: aws ssm start-session --target ${instance.instanceId}`,
       description: 'SSH command to connect to the instance',
     });
